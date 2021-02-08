@@ -2,6 +2,7 @@
   "name": "zisy_blog",
   "description": "my personal blog",
   "version": "0.0.1",
+  "homepage": "https://ziskand.github.io/ziskand-blog",
   "scripts": {
     "dev": "run-p watch:*",
     "watch:css": "postcss src/assets/global.pcss -o static/global.css -w",
@@ -16,7 +17,7 @@
     "cy:run": "cypress run",
     "cy:open": "cypress open",
     "test": "run-p --race dev cy:run",
-    "deploy": "sapper export --legacy &&  gh-pages -d __sapper__/export"
+    "deploy": "run-s export && gh-pages -d __sapper__/export"
   },
   "dependencies": {
     "compression": "^1.7.1",
