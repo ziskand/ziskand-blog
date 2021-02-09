@@ -1,4 +1,4 @@
-import { _ as _inherits, a as _getPrototypeOf, b as _possibleConstructorReturn, c as _classCallCheck, i as init, d as _assertThisInitialized, e as dispatch_dev, D as _createClass, S as SvelteComponentDev, E as validate_each_argument, s as safe_not_equal, f as element, t as text, h as claim_element, j as children, k as claim_text, l as detach_dev, n as attr_dev, o as add_location, p as insert_dev, q as append_dev, F as set_data_dev, g as space, u as query_selector_all, m as claim_space, w as _slicedToArray, G as noop, H as destroy_each, A as validate_slots } from './client.28a22b82.js';
+import { _ as _inherits, a as _getPrototypeOf, b as _possibleConstructorReturn, c as _classCallCheck, i as init, d as _assertThisInitialized, e as dispatch_dev, w as _createClass, S as SvelteComponentDev, x as validate_each_argument, s as safe_not_equal, g as element, t as text, k as claim_element, l as children, m as claim_text, h as detach_dev, n as attr_dev, o as add_location, p as insert_dev, r as append_dev, y as set_data_dev, f as space, q as query_selector_all, j as claim_space, z as _slicedToArray, u as noop, A as destroy_each, v as validate_slots } from './client.6a1f9c9f.js';
 
 function _createSuper(Derived) { var hasNativeReflectConstruct = _isNativeReflectConstruct(); return function _createSuperInternal() { var Super = _getPrototypeOf(Derived), result; if (hasNativeReflectConstruct) { var NewTarget = _getPrototypeOf(this).constructor; result = Reflect.construct(Super, arguments, NewTarget); } else { result = Super.apply(this, arguments); } return _possibleConstructorReturn(this, result); }; }
 
@@ -139,7 +139,7 @@ function create_fragment(ctx) {
       document.title = "Blog";
       attr_dev(h1, "class", "dark:text-white");
       add_location(h1, file, 18, 0, 269);
-      attr_dev(ul, "class", "dark:text-gray-400 svelte-dkckuz");
+      attr_dev(ul, "class", "dark:text-gray-400");
       add_location(ul, file, 20, 0, 316);
     },
     m: function mount(target, anchor) {

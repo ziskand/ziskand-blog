@@ -932,10 +932,6 @@ function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Re
 
 function noop() {}
 
-var identity = function identity(x) {
-  return x;
-};
-
 function assign(tar, src) {
   // @ts-ignore
   for (var k in src) {
@@ -1025,49 +1021,6 @@ function update_slot(slot, slot_definition, ctx, $$scope, dirty, get_slot_change
   }
 }
 
-var is_client = typeof window !== 'undefined';
-var now = is_client ? function () {
-  return window.performance.now();
-} : function () {
-  return Date.now();
-};
-var raf = is_client ? function (cb) {
-  return requestAnimationFrame(cb);
-} : noop; // used internally for testing
-
-var tasks = new Set();
-
-function run_tasks(now) {
-  tasks.forEach(function (task) {
-    if (!task.c(now)) {
-      tasks.delete(task);
-      task.f();
-    }
-  });
-  if (tasks.size !== 0) raf(run_tasks);
-}
-/**
- * Creates a new task that runs on each raf frame
- * until it returns a falsy value or is aborted
- */
-
-
-function loop(callback) {
-  var task;
-  if (tasks.size === 0) raf(run_tasks);
-  return {
-    promise: new Promise(function (fulfill) {
-      tasks.add(task = {
-        c: callback,
-        f: fulfill
-      });
-    }),
-    abort: function abort() {
-      tasks.delete(task);
-    }
-  };
-}
-
 function append(target, node) {
   target.appendChild(node);
 }
@@ -1104,13 +1057,6 @@ function space() {
 
 function empty() {
   return text('');
-}
-
-function listen(node, event, handler, options) {
-  node.addEventListener(event, handler, options);
-  return function () {
-    return node.removeEventListener(event, handler, options);
-  };
 }
 
 function attr(node, attribute, value) {
@@ -1229,83 +1175,6 @@ var HtmlTag = /*#__PURE__*/function () {
   return HtmlTag;
 }();
 
-var active_docs = new Set();
-var active = 0; // https://github.com/darkskyapp/string-hash/blob/master/index.js
-
-function hash(str) {
-  var hash = 5381;
-  var i = str.length;
-
-  while (i--) {
-    hash = (hash << 5) - hash ^ str.charCodeAt(i);
-  }
-
-  return hash >>> 0;
-}
-
-function create_rule(node, a, b, duration, delay, ease, fn) {
-  var uid = arguments.length > 7 && arguments[7] !== undefined ? arguments[7] : 0;
-  var step = 16.666 / duration;
-  var keyframes = '{\n';
-
-  for (var p = 0; p <= 1; p += step) {
-    var t = a + (b - a) * ease(p);
-    keyframes += p * 100 + "%{".concat(fn(t, 1 - t), "}\n");
-  }
-
-  var rule = keyframes + "100% {".concat(fn(b, 1 - b), "}\n}");
-  var name = "__svelte_".concat(hash(rule), "_").concat(uid);
-  var doc = node.ownerDocument;
-  active_docs.add(doc);
-  var stylesheet = doc.__svelte_stylesheet || (doc.__svelte_stylesheet = doc.head.appendChild(element('style')).sheet);
-  var current_rules = doc.__svelte_rules || (doc.__svelte_rules = {});
-
-  if (!current_rules[name]) {
-    current_rules[name] = true;
-    stylesheet.insertRule("@keyframes ".concat(name, " ").concat(rule), stylesheet.cssRules.length);
-  }
-
-  var animation = node.style.animation || '';
-  node.style.animation = "".concat(animation ? "".concat(animation, ", ") : '').concat(name, " ").concat(duration, "ms linear ").concat(delay, "ms 1 both");
-  active += 1;
-  return name;
-}
-
-function delete_rule(node, name) {
-  var previous = (node.style.animation || '').split(', ');
-  var next = previous.filter(name ? function (anim) {
-    return anim.indexOf(name) < 0;
-  } // remove specific animation
-  : function (anim) {
-    return anim.indexOf('__svelte') === -1;
-  } // remove all Svelte animations
-  );
-  var deleted = previous.length - next.length;
-
-  if (deleted) {
-    node.style.animation = next.join(', ');
-    active -= deleted;
-    if (!active) clear_rules();
-  }
-}
-
-function clear_rules() {
-  raf(function () {
-    if (active) return;
-    active_docs.forEach(function (doc) {
-      var stylesheet = doc.__svelte_stylesheet;
-      var i = stylesheet.cssRules.length;
-
-      while (i--) {
-        stylesheet.deleteRule(i);
-      }
-
-      doc.__svelte_rules = {};
-    });
-    active_docs.clear();
-  });
-}
-
 var current_component;
 
 function set_current_component(component) {
@@ -1402,23 +1271,6 @@ function update($$) {
   }
 }
 
-var promise;
-
-function wait() {
-  if (!promise) {
-    promise = Promise.resolve();
-    promise.then(function () {
-      promise = null;
-    });
-  }
-
-  return promise;
-}
-
-function dispatch(node, direction, kind) {
-  node.dispatchEvent(custom_event("".concat(direction ? 'intro' : 'outro').concat(kind)));
-}
-
 var outroing = new Set();
 var outros;
 
@@ -1460,133 +1312,6 @@ function transition_out(block, local, detach, callback) {
     });
     block.o(local);
   }
-}
-
-var null_transition = {
-  duration: 0
-};
-
-function create_bidirectional_transition(node, fn, params, intro) {
-  var config = fn(node, params);
-  var t = intro ? 0 : 1;
-  var running_program = null;
-  var pending_program = null;
-  var animation_name = null;
-
-  function clear_animation() {
-    if (animation_name) delete_rule(node, animation_name);
-  }
-
-  function init(program, duration) {
-    var d = program.b - t;
-    duration *= Math.abs(d);
-    return {
-      a: t,
-      b: program.b,
-      d: d,
-      duration: duration,
-      start: program.start,
-      end: program.start + duration,
-      group: program.group
-    };
-  }
-
-  function go(b) {
-    var _ref3 = config || null_transition,
-        _ref3$delay = _ref3.delay,
-        delay = _ref3$delay === void 0 ? 0 : _ref3$delay,
-        _ref3$duration = _ref3.duration,
-        duration = _ref3$duration === void 0 ? 300 : _ref3$duration,
-        _ref3$easing = _ref3.easing,
-        easing = _ref3$easing === void 0 ? identity : _ref3$easing,
-        _ref3$tick = _ref3.tick,
-        tick = _ref3$tick === void 0 ? noop : _ref3$tick,
-        css = _ref3.css;
-
-    var program = {
-      start: now() + delay,
-      b: b
-    };
-
-    if (!b) {
-      // @ts-ignore todo: improve typings
-      program.group = outros;
-      outros.r += 1;
-    }
-
-    if (running_program || pending_program) {
-      pending_program = program;
-    } else {
-      // if this is an intro, and there's a delay, we need to do
-      // an initial tick and/or apply CSS animation immediately
-      if (css) {
-        clear_animation();
-        animation_name = create_rule(node, t, b, duration, delay, easing, css);
-      }
-
-      if (b) tick(0, 1);
-      running_program = init(program, duration);
-      add_render_callback(function () {
-        return dispatch(node, b, 'start');
-      });
-      loop(function (now) {
-        if (pending_program && now > pending_program.start) {
-          running_program = init(pending_program, duration);
-          pending_program = null;
-          dispatch(node, running_program.b, 'start');
-
-          if (css) {
-            clear_animation();
-            animation_name = create_rule(node, t, running_program.b, running_program.duration, 0, easing, config.css);
-          }
-        }
-
-        if (running_program) {
-          if (now >= running_program.end) {
-            tick(t = running_program.b, 1 - t);
-            dispatch(node, running_program.b, 'end');
-
-            if (!pending_program) {
-              // we're done
-              if (running_program.b) {
-                // intro — we can tidy up immediately
-                clear_animation();
-              } else {
-                // outro — needs to be coordinated
-                if (! --running_program.group.r) run_all(running_program.group.c);
-              }
-            }
-
-            running_program = null;
-          } else if (now >= running_program.start) {
-            var p = now - running_program.start;
-            t = running_program.a + running_program.d * easing(p / running_program.duration);
-            tick(t, 1 - t);
-          }
-        }
-
-        return !!(running_program || pending_program);
-      });
-    }
-  }
-
-  return {
-    run: function run(b) {
-      if (is_function(config)) {
-        wait().then(function () {
-          // @ts-ignore
-          config = config();
-          go(b);
-        });
-      } else {
-        go(b);
-      }
-    },
-    end: function end() {
-      clear_animation();
-      running_program = pending_program = null;
-    }
-  };
 }
 
 var globals = typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : global;
@@ -1815,28 +1540,6 @@ function detach_dev(node) {
     node: node
   });
   detach(node);
-}
-
-function listen_dev(node, event, handler, options, has_prevent_default, has_stop_propagation) {
-  var modifiers = options === true ? ['capture'] : options ? Array.from(Object.keys(options)) : [];
-  if (has_prevent_default) modifiers.push('preventDefault');
-  if (has_stop_propagation) modifiers.push('stopPropagation');
-  dispatch_dev('SvelteDOMAddEventListener', {
-    node: node,
-    event: event,
-    handler: handler,
-    modifiers: modifiers
-  });
-  var dispose = listen(node, event, handler, options);
-  return function () {
-    dispatch_dev('SvelteDOMRemoveEventListener', {
-      node: node,
-      event: event,
-      handler: handler,
-      modifiers: modifiers
-    });
-    dispose();
-  };
 }
 
 function attr_dev(node, attribute, value) {
@@ -2222,14 +1925,14 @@ var file$1 = "src/components/Footer.svelte";
 
 function create_fragment$1(ctx) {
   var footer;
-  var p;
+  var span;
   var t0;
   var t1;
   var block = {
     c: function create() {
       footer = element("footer");
-      p = element("p");
-      t0 = text("Yigal Ziskand © ");
+      span = element("span");
+      t0 = text("Yigal Zsiaknd © ");
       t1 = text(
       /*year*/
       ctx[0]);
@@ -2240,29 +1943,29 @@ function create_fragment$1(ctx) {
         class: true
       });
       var footer_nodes = children(footer);
-      p = claim_element(footer_nodes, "P", {
+      span = claim_element(footer_nodes, "SPAN", {
         class: true
       });
-      var p_nodes = children(p);
-      t0 = claim_text(p_nodes, "Yigal Ziskand © ");
-      t1 = claim_text(p_nodes,
+      var span_nodes = children(span);
+      t0 = claim_text(span_nodes, "Yigal Zsiaknd © ");
+      t1 = claim_text(span_nodes,
       /*year*/
       ctx[0]);
-      p_nodes.forEach(detach_dev);
+      span_nodes.forEach(detach_dev);
       footer_nodes.forEach(detach_dev);
       this.h();
     },
     h: function hydrate() {
-      attr_dev(p, "class", "prose prose-lg dark:text-gray-400");
-      add_location(p, file$1, 5, 4, 99);
+      attr_dev(span, "class", "prose prose-lg  dark:text-gray-400");
+      add_location(span, file$1, 5, 4, 99);
       attr_dev(footer, "class", "container py-2");
       add_location(footer, file$1, 4, 0, 63);
     },
     m: function mount(target, anchor) {
       insert_dev(target, footer, anchor);
-      append_dev(footer, p);
-      append_dev(p, t0);
-      append_dev(p, t1);
+      append_dev(footer, span);
+      append_dev(span, t0);
+      append_dev(span, t1);
     },
     p: noop,
     i: noop,
@@ -3367,15 +3070,15 @@ var App = /*#__PURE__*/function (_SvelteComponentDev) {
 var ignore = [/^\/blog\.json$/, /^\/blog\/([^/]+?)\.json$/];
 var components = [{
   js: function js() {
-    return Promise.all([import('./index.a9a7990a.js'), __inject_styles(["client-a6feaaf0.css","index-eba1c64a.css"])]).then(function(x) { return x[0]; });
+    return Promise.all([import('./index.565825b8.js'), __inject_styles(["client-a6feaaf0.css"])]).then(function(x) { return x[0]; });
   }
 }, {
   js: function js() {
-    return Promise.all([import('./index.5bc450f7.js'), __inject_styles(["client-a6feaaf0.css","index-feeec1db.css"])]).then(function(x) { return x[0]; });
+    return Promise.all([import('./index.982cfb0b.js'), __inject_styles(["client-a6feaaf0.css"])]).then(function(x) { return x[0]; });
   }
 }, {
   js: function js() {
-    return Promise.all([import('./[slug].2a53ce9f.js'), __inject_styles(["client-a6feaaf0.css"])]).then(function(x) { return x[0]; });
+    return Promise.all([import('./[slug].ba9d7fd3.js'), __inject_styles(["client-a6feaaf0.css"])]).then(function(x) { return x[0]; });
   }
 }];
 var routes = function (d) {
@@ -4291,6 +3994,6 @@ start$1({
   target: document.querySelector('#sapper')
 });
 
-export { validate_slots as A, add_render_callback as B, group_outros as C, _createClass as D, validate_each_argument as E, set_data_dev as F, noop as G, destroy_each as H, regenerator as I, HtmlTag as J, SvelteComponentDev as S, _inherits as _, _getPrototypeOf as a, _possibleConstructorReturn as b, _classCallCheck as c, _assertThisInitialized as d, dispatch_dev as e, element as f, space as g, claim_element as h, init as i, children as j, claim_text as k, detach_dev as l, claim_space as m, attr_dev as n, add_location as o, insert_dev as p, append_dev as q, create_bidirectional_transition as r, safe_not_equal as s, text as t, query_selector_all as u, listen_dev as v, _slicedToArray as w, transition_in as x, transition_out as y, check_outros as z };
+export { destroy_each as A, regenerator as B, HtmlTag as H, SvelteComponentDev as S, _inherits as _, _getPrototypeOf as a, _possibleConstructorReturn as b, _classCallCheck as c, _assertThisInitialized as d, dispatch_dev as e, space as f, element as g, detach_dev as h, init as i, claim_space as j, claim_element as k, children as l, claim_text as m, attr_dev as n, add_location as o, insert_dev as p, query_selector_all as q, append_dev as r, safe_not_equal as s, text as t, noop as u, validate_slots as v, _createClass as w, validate_each_argument as x, set_data_dev as y, _slicedToArray as z };
 
 import __inject_styles from './inject_styles.fe622066.js';
