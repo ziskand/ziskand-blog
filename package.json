@@ -10,14 +10,14 @@
     "build": "run-s build:css build:sapper",
     "build:css": "NODE_ENV=production postcss src/assets/global.pcss -o static/global.css",
     "build:sapper": "sapper build --legacy",
-    "build:export": "sapper export --legacy",
+    "build:export": "sapper export --basepath ziskand-blog --legacy",
     "export": "run-s build:css build:export",
     "start": "node __sapper__/build",
     "serve": "serve ___sapper__/export",
     "cy:run": "cypress run",
     "cy:open": "cypress open",
     "test": "run-p --race dev cy:run",
-    "deploy": "run-s export && gh-pages -d __sapper__/export"
+    "deploy": "run-s export && gh-pages -d __sapper__/export/ziskand-blog"
   },
   "dependencies": {
     "compression": "^1.7.1",
