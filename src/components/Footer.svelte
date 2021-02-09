@@ -3,7 +3,7 @@
 </script>
 
 <footer class="container py-2">
-    <p class="prose prose-lg dark:text-gray-400">
-        Yigal Ziskand © {year}
-    </p>
+    <span class="prose prose-lg  dark:text-gray-400">
+        Yigal Zsiaknd © {year}</span
+    >
 </footer>
