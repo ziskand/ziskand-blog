@@ -1,2 +1,2 @@
-## My personal blog
+## (_deprecated_) My personal blog
 ##### #Sapper #Svelte #TailwindCSS #PostCSS
